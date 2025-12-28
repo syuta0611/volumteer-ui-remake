@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>送迎予約アプリデモ（カレンダー機能強化版）</title>
+    <style>
+        /* --- 共通スタイル --- */
+        :root {
+            --primary-green: #4FA855; /* 明るい緑 */
+            --bg-gray: #f2f2f7;
+            --text-black: #333;
+            --status-blue: #4169E1;
+            --status-orange: #F5A623;
+            --border-color: #ddd;
+            --today-color: #ff9f43; /* 今日の強調色 */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 400px;
+            height: 100%;
+            background-color: white;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        header {
+            background-color: var(--primary-green);
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            padding: 50px 0 15px 0;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #fff;
+            position: relative;
+        }
+
+        /* ビュー（画面）の切り替え用 */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .section-title:first-child { margin-top: 0; }
+
+        .info-box {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        /* --- リストアイテム（カード） --- */
+        .ride-item {
+            background: white; border-radius: 12px; padding: 15px;
+            margin-bottom: 12px; display: flex; align-items: flex-start;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #eee;
+            position: relative;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ride-item.selected { border: 1px solid var(--status-blue); background: #fcfcfc; }
+
+        .item-close {
+            position: absolute; top: 5px; right: 5px;
+            color: #ccc; font-size: 20px; cursor: pointer;
+            padding: 8px; line-height: 1; font-weight: bold;
+        }
+        .item-close:hover { color: #999; }
+
+        .action-area {
+            width: 80px; margin-right: 15px; display: flex; flex-direction: column; gap: 5px;
+        }
+        .btn-add {
+            background-color: var(--status-blue); color: white; border: none;
+            border-radius: 6px; padding: 10px 0; font-size: 12px; font-weight: bold;
+            cursor: pointer; width: 100%;
+        }
+        .status-box {
+            border: 1px solid var(--status-blue); background-color: #f0f4ff;
+            color: var(--status-blue); border-radius: 6px; padding: 8px 0;
+            text-align: center; font-size: 11px; font-weight: bold;
+        }
+        .btn-remove-sm {
+            background: #eee; border: none; color: #666; font-size: 10px;
+            border-radius: 4px; padding: 4px 0; cursor: pointer; width: 100%; margin-top: 4px;
+        }
+        
+        .ride-info { flex: 1; margin-right: 20px; }
+        .ride-date { font-weight: bold; font-size: 14px; margin-bottom: 5px; display:block;}
+        .ride-detail { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; margin-bottom: 3px;}
+
+        /* 運行タイプのバッジ */
+        .type-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background-color: #eee;
+            color: #444;
+            display: inline-block;
+            margin-top: 2px;
+            font-weight: normal;
+        }
+
+        /* --- カレンダー共通スタイル --- */
+        .calendar-container { padding-bottom: 10px; background: #fff; border-radius:12px; }
+        
+        /* カレンダーヘッダー（ナビゲーション） */
+        .calendar-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 10px; font-weight: bold; font-size: 16px; color: #333;
+        }
+        .nav-btn {
+            background: none; border: none; font-size: 18px; color: var(--primary-green);
+            cursor: pointer; padding: 5px 15px; font-weight: bold;
+        }
+        .nav-btn:hover { background-color: #f0f0f0; border-radius: 50%; }
+
+        .calendar-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            row-gap: 15px; column-gap: 5px; text-align: center;
+        }
+        .day-label { font-size: 12px; color: #888; margin-bottom: 5px; }
+        .day-label.sun { color: #e74c3c; }
+        .day-label.sat { color: #3498db; }
+        
+        .date-cell {
+            height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 50%; position: relative; font-size: 15px; color: #333; isolation: isolate; z-index: 1;
+            transition: background 0.2s;
+        }
+        .badge { font-size: 9px; line-height: 1; margin-top: 2px; font-weight: bold; }
+        
+        /* 募集中のスタイル */
+        .date-cell.open { color: var(--status-blue); }
+        .date-cell.open::after {
+            content: ''; position: absolute; width: 36px; height: 36px;
+            border: 2px solid var(--status-blue); border-radius: 50%;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1;
+        }
+        .date-cell.open .badge { content: "募集中"; }
+
+        /* 希望中のスタイル */
+        .date-cell.requested { color: white; }
+        .date-cell.requested::after {
+            content: ''; position: absolute; width: 40px; height: 40px;
+            background-color: var(--status-orange); border-radius: 50%;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1;
+        }
+        .date-cell.requested .badge { content: "希望中"; }
+
+        /* 本日のスタイル */
+        .date-cell.today {
+            font-weight: bold;
+        }
+        .date-cell.today::before {
+            content: ''; position: absolute; width: 42px; height: 42px;
+            border: 2px solid var(--today-color); border-radius: 50%;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -2;
+        }
+        /* バッジがない場合（募集中でも希望中でもない）の「今日」表示 */
+        .date-cell.today:not(.open):not(.requested) .badge {
+            content: "今日"; color: var(--today-color);
+        }
+
+        /* フッター・ナビ */
+        .footer-action { padding: 15px 20px 30px 20px; background: white; border-top: 1px solid #eee; z-index: 10; }
+        .btn { display: block; width: 100%; padding: 14px; border-radius: 25px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 10px; text-align: center; }
+        .btn-primary { background-color: #3840a0; color: white; box-shadow: 0 4px 10px rgba(56, 64, 160, 0.3); }
+        .btn-outline { background: white; border: 1px solid #3840a0; color: #3840a0; }
+        .btn-danger-outline { background: white; border: 1px solid #e74c3c; color: #e74c3c; }
+        .btn-danger-fill { background: #e74c3c; color: white; }
+
+        .nav-bar { display:flex; justify-content:space-around; padding:10px 0; background:var(--primary-green); color:white; font-size:10px; z-index: 20; }
+        .nav-item { text-align:center; opacity: 0.6; cursor: pointer; transition: opacity 0.2s; min-width: 60px; }
+        .nav-item.active { opacity: 1; font-weight: bold; }
+        .nav-icon { font-size: 18px; margin-bottom: 2px; display: block; }
+
+        /* モーダル */
+        .modal-overlay, .overlay-screen, .success-full-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; z-index: 100;
+        }
+        .modal-overlay { background: rgba(0,0,0,0.4); flex-direction: column; justify-content: flex-end; }
+        .modal-overlay.active { display: flex; }
+        
+        .bottom-sheet {
+            background: #f9f9f9; border-radius: 15px 15px 0 0; 
+            max-height: 90%; height: 90%;
+            display: flex; flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out; box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+        }
+        .modal-overlay.active .bottom-sheet { transform: translateY(0); }
+        
+        .sheet-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; background: white; border-radius: 15px 15px 0 0;}
+        .sheet-content { flex: 1; overflow-y: auto; padding: 20px; }
+        .sheet-footer { padding: 20px; background: white; border-top: 1px solid #eee; }
+
+        .overlay-screen { background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 200; }
+        .dialog-box { background: white; width: 85%; padding: 25px; border-radius: 15px; text-align: center; }
+        
+        .success-full-screen { background: white; flex-direction: column; align-items: center; justify-content: center; z-index: 150; }
+
+        .empty-state-msg {
+            text-align: center; color: #999; font-size: 13px; margin-top: 50px; margin-bottom: 50px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <header id="app-header">ホーム</header>
+
+    <main>
+        <div id="view-home" class="view-section active">
+            <div class="section-title">あなたの乗車希望</div>
+            <div class="info-box" id="user-plan-area">乗車希望はありません</div>
+
+            <div class="section-title">現在募集中の日程</div>
+            <div class="card calendar-container">
+                <div class="calendar-nav">
+                    <button class="nav-btn" onclick="changeMonth(-1, 'home')">＜</button>
+                    <span id="home-month-label">2025年11月</span>
+                    <button class="nav-btn" onclick="changeMonth(1, 'home')">＞</button>
+                </div>
+                <div class="calendar-grid" id="home-calendar-grid">
+                    </div>
+            </div>
+        </div>
+
+        <div id="view-vote" class="view-section">
+            <div class="section-title" style="margin-bottom:10px;">日付を選択してください</div>
+            
+            <div class="calendar-container">
+                <div class="calendar-nav">
+                    <button class="nav-btn" onclick="changeMonth(-1, 'vote')">＜</button>
+                    <span id="vote-month-label">2025年11月</span>
+                    <button class="nav-btn" onclick="changeMonth(1, 'vote')">＞</button>
+                </div>
+                <div class="calendar-grid" id="vote-calendar-grid">
+                    </div>
+            </div>
+
+            <div style="height: 1px; background: #eee; margin: 20px 0;"></div>
+
+            <div id="vote-page-list">
+                <div class="empty-state-msg">
+                    上のカレンダーの日付をタップすると<br>詳細が表示されます
+                </div>
+            </div>
+
+            <div style="margin-top:30px; padding-bottom:20px;">
+                <button class="btn btn-primary" onclick="submitFromVoteTab()">
+                    ✔ 選択した内容を送信
+                </button>
+            </div>
+        </div>
+
+        <div id="view-record" class="view-section">
+            <div class="section-title">実績一覧</div>
+            <div id="record-list">
+                <div class="empty-state-msg">
+                    実績記録はまだありません
+                </div>
+            </div>
+        </div>
+
+        <div id="view-settings" class="view-section">
+            <div class="section-title">アカウント設定</div>
+            <div class="ride-item">
+                <div class="ride-info">
+                    <span style="display: block; font-weight: bold; margin-bottom: 8px;">ユーザー名</span>
+                    <div class="ride-detail" id="settings-username">未設定</div>
+                </div>
+            </div>
+
+            <div class="section-title">通知設定</div>
+            <div class="ride-item" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>メール通知</span>
+                <input type="checkbox" id="email-notification" checked style="width: 20px; height: 20px; cursor: pointer;">
+            </div>
+            <div class="ride-item" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>プッシュ通知</span>
+                <input type="checkbox" id="push-notification" checked style="width: 20px; height: 20px; cursor: pointer;">
+            </div>
+
+            <div class="section-title">その他</div>
+            <div class="ride-item" style="cursor: pointer; text-align: center; color: #3840a0;">
+                <strong onclick="alert('バージョン: 1.0.0\n最終更新: 2025年12月')">アプリ情報</strong>
+            </div>
+            <div class="ride-item" style="cursor: pointer; text-align: center; color: #e74c3c;">
+                <strong onclick="logoutApp()">ログアウト</strong>
+            </div>
+        </div>
+    </main>
+
+    <div class="footer-action" id="footer-actions">
+        </div>
+
+    <div class="nav-bar">
+        <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
+            <span class="nav-icon">🏠</span>ホーム
+        </div>
+        <div class="nav-item" id="nav-vote" onclick="switchTab('vote')">
+            <span class="nav-icon">🗳️</span>投票
+        </div>
+        <div class="nav-item" id="nav-record" onclick="switchTab('record')">
+            <span class="nav-icon">📖</span>記録
+        </div>
+        <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+            <span class="nav-icon">⚙️</span>設定
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="selection-modal">
+        <div class="bottom-sheet">
+            <div class="sheet-header">
+                <span style="font-weight:bold; font-size:14px;">予約の変更</span>
+                <button onclick="closeSelectionModal()" style="border:none; background:none; font-size:20px;">✕</button>
+            </div>
+            
+            <div class="sheet-content">
+                <div class="section-title" style="margin-top:0;">追加・変更する日をタップ</div>
+                
+                <div class="calendar-container">
+                    <div class="calendar-nav">
+                        <button class="nav-btn" onclick="changeMonth(-1, 'modal')">＜</button>
+                        <span id="modal-month-label">2025年11月</span>
+                        <button class="nav-btn" onclick="changeMonth(1, 'modal')">＞</button>
+                    </div>
+                    <div class="calendar-grid" id="modal-calendar-grid">
+                        </div>
+                </div>
+
+                <div style="height: 1px; background: #eee; margin: 20px 0;"></div>
+
+                <div id="modal-page-list">
+                    </div>
+            </div>
+
+            <div class="sheet-footer">
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" style="background:#ddd; color:#555; width:30%;" onclick="closeSelectionModal()">戻る</button>
+                    <button class="btn btn-primary" style="width:70%;" onclick="submitRequests()">変更を保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="success-full-screen" id="success-screen">
+        <div style="font-size:40px; margin-bottom:20px;">✅</div>
+        <h2 style="font-size:18px; margin:0 0 10px 0;">送信が完了しました！</h2>
+        <div style="width:80%; background:#f5f5f5; padding:15px; border-radius:10px; margin:30px 0; text-align:left;">
+            <div style="font-size:12px; font-weight:bold; color:#3840a0;">送信内容</div>
+            <ul id="success-list" style="padding-left:20px; font-size:13px; margin:10px 0 0 0;"></ul>
+        </div>
+        <button class="btn" style="background:#e67e22; color:white; width:80%;" onclick="returnToHome()">ホームに戻る</button>
+    </div>
+
+    <div class="overlay-screen" id="cancel-alert">
+        <div class="dialog-box">
+            <h3 style="font-size:16px;">希望を取り消しますか？</h3>
+            <div style="display:flex; gap:10px; margin-top:25px;">
+                <button class="btn" style="background:#eee; color:#333;" onclick="closeCancelAlert()">戻る</button>
+                <button class="btn btn-danger-fill" onclick="confirmCancel()">破棄する</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    /* --- 定数定義 --- */
+    // 本日を 2025年11月25日 とする
+    const TODAY_YEAR = 2025;
+    const TODAY_MONTH = 11; // 11月
+    const TODAY_DATE = 25;
+
+    // 募集データ（これは2025年12月のみとする）
+    const rideDetails = {
+        2:  { date: "12月2日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
+        3:  { date: "12月3日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
+        5:  { date: "12月5日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
+        8:  { date: "12月8日 (月)", time: "10:30 ~ 11:20", type: "フリー運行", youbi: "月" },
+        9:  { date: "12月9日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
+        12: { date: "12月12日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
+        16: { date: "12月16日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
+        17: { date: "12月17日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
+        19: { date: "12月19日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
+        22: { date: "12月22日 (月)", time: "10:30 ~ 12:00", type: "フリー運行", youbi: "月" },
+        23: { date: "12月23日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
+        24: { date: "12月24日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
+        26: { date: "12月26日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" }
+    };
+    
+    // データがある月（12月）のみIDキーの配列を作る
+    const openDatesDec2025 = Object.keys(rideDetails).map(Number).sort((a,b)=>a-b);
+
+    /* --- 状態管理 --- */
+    let requestedDates = []; 
+    let tempSelectedDates = []; 
+
+    // 各ビューごとの現在の表示年月
+    let viewState = {
+        home: { year: 2025, month: 11 }, // ホームは今日(11月)から
+        vote: { year: 2025, month: 11 }, // 投票も今日からスタート（遷移して12月へ）
+        modal: { year: 2025, month: 11 } 
+    };
+
+    window.onload = () => {
+        // 初期表示
+        renderCalendar('home');
+        updateFooter();
+        updateUserPlanArea();
+    };
+
+    /* --- タブ切り替え --- */
+    function switchTab(tabName) {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(`nav-${tabName}`).classList.add('active');
+
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.getElementById(`view-${tabName}`).classList.add('active');
+
+        const footer = document.getElementById('footer-actions');
+        if(tabName === 'home') {
+            footer.style.display = 'block';
+            document.getElementById('app-header').innerText = 'ホーム';
+            renderCalendar('home');
+        } else if(tabName === 'vote') {
+            footer.style.display = 'none';
+            document.getElementById('app-header').innerText = '投票';
+            // 投票タブ初期化
+            tempSelectedDates = [...requestedDates];
+            viewState.vote = { year: 2025, month: 11 }; // リセットする場合
+            initVoteScreen();
+        } else if(tabName === 'record') {
+            footer.style.display = 'none';
+            document.getElementById('app-header').innerText = '記録';
+            loadRecordList();
+        } else if(tabName === 'settings') {
+            footer.style.display = 'none';
+            document.getElementById('app-header').innerText = '設定';
+            loadSettingsPage();
+        }
+    }
+
+    /* --- 記録ページ用関数 --- */
+    function loadRecordList() {
+        const recordList = document.getElementById('record-list');
+        // サンプル実績データ
+        const sampleRecords = [
+            { date: '2025年12月2日 (火)', time: '10:00 ~ 11:30', type: '循環ルート', status: '完了' },
+            { date: '2025年12月5日 (金)', time: '10:00 ~ 11:30', type: '循環ルート', status: '完了' },
+        ];
+
+        if(sampleRecords.length === 0) {
+            recordList.innerHTML = '<div class="empty-state-msg">実績記録はまだありません</div>';
+        } else {
+            let html = '';
+            sampleRecords.forEach(record => {
+                html += `
+                    <div class="ride-item">
+                        <div class="action-area">
+                            <div style="background: #4FA855; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px;">✔ ${record.status}</div>
+                        </div>
+                        <div class="ride-info">
+                            <span class="ride-date">📅 ${record.date}</span>
+                            <div class="ride-detail">🕒 ${record.time}</div>
+                            <div class="ride-detail"><span class="type-badge">📝 ${record.type}</span></div>
+                        </div>
+                    </div>
+                `;
+            });
+            recordList.innerHTML = html;
+        }
+    }
+
+    /* --- 設定ページ用関数 --- */
+    function loadSettingsPage() {
+        const usernameEl = document.getElementById('settings-username');
+        // デフォルトユーザー名（実際にはログイン情報から取得）
+        usernameEl.innerText = 'ボランティア太郎';
+    }
+
+    function logoutApp() {
+        if(confirm('ログアウトしてもよろしいですか？')) {
+            alert('ログアウトしました');
+            switchTab('home');
+        }
+    }
+
+    /* --- カレンダーナビゲーション処理 --- */
+    function changeMonth(offset, viewName) {
+        let s = viewState[viewName];
+        s.month += offset;
+        
+        // 年またぎの処理
+        if (s.month > 12) {
+            s.month = 1;
+            s.year++;
+        } else if (s.month < 1) {
+            s.month = 12;
+            s.year--;
+        }
+        
+        // 再描画
+        if (viewName === 'home') renderCalendar('home');
+        else if (viewName === 'vote') initVoteScreen();
+        else if (viewName === 'modal') renderModalCalendar();
+    }
+
+    /* --- カレンダー生成ロジック --- */
+    // 指定されたビューのカレンダーを描画するラッパー
+    function renderCalendar(viewName) {
+        const s = viewState[viewName];
+        const gridId = `${viewName}-calendar-grid`;
+        const labelId = `${viewName}-month-label`;
+        
+        // ラベル更新
+        document.getElementById(labelId).innerText = `${s.year}年${s.month}月`;
+
+        // オプション設定
+        const options = {
+            year: s.year,
+            month: s.month,
+            targetId: `${viewName}-cal`,
+            selectedDates: (viewName === 'home') ? requestedDates : tempSelectedDates,
+            isInteractive: (viewName !== 'home'), // home以外はクリック可能
+            clickHandlerName: (viewName === 'vote') ? 'onVoteCalendarClick' : 'onModalCalendarClick'
+        };
+
+        document.getElementById(gridId).innerHTML = generateCalendarHTML(options);
+    }
+
+    // カレンダーHTML生成コア関数
+    function generateCalendarHTML(opt) {
+        let html = '';
+        
+        // 曜日ヘッダー
+        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+        dayNames.forEach((d, i) => {
+            let cls = 'day-label'; if(i===0) cls+=' sun'; if(i===6) cls+=' sat';
+            html += `<div class="${cls}">${d}</div>`;
+        });
+
+        // 月の開始日と日数を計算
+        // new Date(year, monthIndex, 1) -> monthIndexは 0=1月, 11=12月
+        const firstDateObj = new Date(opt.year, opt.month - 1, 1);
+        const startDayOfWeek = firstDateObj.getDay(); // 0(日) ~ 6(土)
+        
+        const lastDateObj = new Date(opt.year, opt.month, 0); // 翌月の0日目＝当月の末日
+        const daysInMonth = lastDateObj.getDate();
+
+        // 空白セル生成
+        for(let i=0; i<startDayOfWeek; i++) html += `<div></div>`;
+
+        // 日付セル生成
+        for(let day=1; day<=daysInMonth; day++) {
+            let cls = 'date-cell';
+            let inner = `${day}`;
+            let clickAttr = '';
+            
+            // 本日判定
+            const isToday = (opt.year === TODAY_YEAR && opt.month === TODAY_MONTH && day === TODAY_DATE);
+            if (isToday) {
+                cls += ' today';
+            }
+
+            // 募集データがある月か？ (今回は2025年12月のみデータありとする)
+            const hasDataMonth = (opt.year === 2025 && opt.month === 12);
+            
+            // 状態判定
+            const isOpen = hasDataMonth && openDatesDec2025.includes(day);
+            const isReq = hasDataMonth && opt.selectedDates.includes(day);
+
+            if(isReq) {
+                cls += ' requested';
+                inner += '<div class="badge">希望中</div>';
+            } else if(isOpen) {
+                cls += ' open';
+                inner += '<div class="badge">募集中</div>';
+            }
+
+            // クリックイベント
+            if(opt.isInteractive && isOpen) {
+                clickAttr = `onclick="${opt.clickHandlerName}(${day})" style="cursor:pointer;"`;
+                clickAttr += ` id="${opt.targetId}-day-${day}"`;
+            } else {
+                // インタラクティブでない、または募集日でない場合
+                // 特別なスタイルはなし（デフォルト）
+            }
+            
+            html += `<div class="${cls}" ${clickAttr}>${inner}</div>`;
+        }
+        return html;
+    }
+
+
+    /* --- ホーム画面 --- */
+    function updateUserPlanArea() {
+        const area = document.getElementById('user-plan-area');
+        if (requestedDates.length === 0) {
+            area.innerHTML = '乗車希望はありません';
+            area.style.textAlign = 'center'; area.style.background = '#f9f9f9';
+        } else {
+            let html = '';
+            // 予約データは12月のものと仮定して表示
+            requestedDates.sort((a,b)=>a-b).forEach(d => {
+                const info = rideDetails[d];
+                if(info) {
+                    html += `<div style="text-align:left; border-bottom:1px solid #eee; padding:8px 0; color:#333; font-size:13px;">
+                                <span style="font-weight:bold;">${info.date}</span> ${info.time}
+                                <span class="type-badge" style="margin-left:5px;">${info.type}</span>
+                             </div>`;
+                }
+            });
+            area.innerHTML = html;
+            area.style.background = 'white';
+        }
+    }
+
+    function updateFooter() {
+        const footer = document.getElementById('footer-actions');
+        if (requestedDates.length > 0) {
+            footer.innerHTML = `
+                <button class="btn btn-outline" onclick="openSelectionModal()">乗車希望の変更をする</button>
+                <button class="btn btn-danger-outline" onclick="openCancelAlert()">希望内容をすべて取り消し</button>
+            `;
+        } else {
+            footer.innerHTML = `
+                <button class="btn btn-primary" onclick="openSelectionModal()">乗車希望の投票はこちらから</button>
+            `;
+        }
+    }
+
+    /* --- 投票タブ --- */
+    function initVoteScreen() {
+        renderCalendar('vote');
+
+        const list = document.getElementById('vote-page-list');
+        // リストは再描画せず維持するか、月が変わったらクリアするか？
+        // 今回は「カレンダーで選んだものを下に溜める」UIなので、
+        // 月を変えても下のリストは維持する（別月選択も可能にするため）が、
+        // データが12月しかないので、他月では押せない。
+        
+        // 初回のみメッセージを表示（すでにカードがあればそのまま）
+        if (list.children.length === 0 || list.querySelector('.empty-state-msg')) {
+             list.innerHTML = `
+                <div class="empty-state-msg">
+                    上のカレンダーの日付をタップすると<br>詳細が表示されます
+                </div>
+            `;
+        }
+    }
+    function onVoteCalendarClick(day) {
+        addCardToContainer(day, 'vote-page-list', 'vote-cal');
+    }
+
+    /* --- モーダル (変更) --- */
+    function openSelectionModal() {
+        tempSelectedDates = [...requestedDates];
+        viewState.modal = { year: 2025, month: 11 }; // 今日からスタート
+        
+        renderModalCalendar();
+
+        const listContainer = document.getElementById('modal-page-list');
+        listContainer.innerHTML = ''; 
+
+        if (tempSelectedDates.length === 0) {
+            listContainer.innerHTML = `<div class="empty-state-msg">追加・変更する日をタップしてください</div>`;
+        } else {
+            tempSelectedDates.sort((a,b)=>a-b).forEach(day => {
+                // カード表示時にはカレンダーIDが必要だが、
+                // モーダルを開いた直後の月(11月)にその日付(12月のデータ)がない場合、
+                // ハイライト連携はできないがカードは表示する。
+                addCardToContainer(day, 'modal-page-list', 'modal-cal', false); 
+            });
+        }
+        document.getElementById('selection-modal').classList.add('active');
+    }
+
+    function renderModalCalendar() {
+        renderCalendar('modal');
+        // カレンダー再描画時に、すでに選択されている日付があればハイライト状態を維持する必要があるが、
+        // generateCalendarHTML内で isReq 判定しているので自動的に反映される。
+    }
+    
+    function closeSelectionModal() {
+        document.getElementById('selection-modal').classList.remove('active');
+    }
+    function onModalCalendarClick(day) {
+        addCardToContainer(day, 'modal-page-list', 'modal-cal');
+    }
+
+    /* --- 共通: カード制御 --- */
+    function addCardToContainer(day, containerId, calendarPrefix, animate = true) {
+        const listContainer = document.getElementById(containerId);
+        const cardId = `card-${containerId}-${day}`;
+
+        // 既にカードがある場合
+        if(document.getElementById(cardId)) {
+            const existing = document.getElementById(cardId);
+            existing.style.transition = 'transform 0.1s';
+            existing.style.transform = 'scale(1.02)';
+            setTimeout(()=> existing.style.transform='scale(1)', 100);
+            return;
+        }
+
+        const emptyMsg = listContainer.querySelector('.empty-state-msg');
+        if(emptyMsg) emptyMsg.remove();
+
+        const info = rideDetails[day]; // ここは常にデータ定義から引く(12月前提)
+        // もし将来的に複数月のデータを扱うなら、dayだけでなくyear/monthもキーにする必要あり
+        
+        const isSelected = tempSelectedDates.includes(day);
+
+        const cardDiv = document.createElement('div');
+        cardDiv.id = cardId;
+        cardDiv.className = isSelected ? 'ride-item selected' : 'ride-item';
+        if(!animate) cardDiv.style.animation = 'none';
+
+        renderCardContent(cardDiv, day, isSelected, info, containerId, calendarPrefix);
+        listContainer.appendChild(cardDiv);
+    }
+
+    function renderCardContent(element, day, isSelected, info, containerId, calendarPrefix) {
+        let btnHtml = '';
+        const toggleFunc = `toggleCardState(${day}, '${element.id}', '${calendarPrefix}')`;
+        const removeFunc = `removeCard(${day}, '${element.id}', '${containerId}')`;
+
+        if(isSelected) {
+            btnHtml = `<div class="status-box">✔ 希望中</div>
+                       <button class="btn-remove-sm" onclick="${toggleFunc}">取り消し</button>`;
+        } else {
+            btnHtml = `<button class="btn-add" onclick="${toggleFunc}">希望に追加</button>`;
+        }
+
+        element.innerHTML = `
+            <div class="action-area">${btnHtml}</div>
+            <div class="ride-info">
+                <span class="ride-date">📅 ${info.date}</span>
+                <div class="ride-detail">🕒 ${info.time}</div>
+                <div class="ride-detail"><span class="type-badge">📝 ${info.type}</span></div>
+            </div>
+            <div class="item-close" onclick="${removeFunc}">×</div>
+        `;
+    }
+
+    function toggleCardState(day, cardId, calendarPrefix) {
+        if(tempSelectedDates.includes(day)) {
+            tempSelectedDates = tempSelectedDates.filter(d => d !== day);
+        } else {
+            tempSelectedDates.push(day);
+        }
+
+        const card = document.getElementById(cardId);
+        // 情報はグローバルの rideDetails から取得 (12月固定データ)
+        const info = rideDetails[day];
+        
+        if(card) {
+            card.className = tempSelectedDates.includes(day) ? 'ride-item selected' : 'ride-item';
+            const containerId = card.parentElement.id; 
+            renderCardContent(card, day, tempSelectedDates.includes(day), info, containerId, calendarPrefix);
+        }
+        updateCalendarCellDisplay(day, calendarPrefix);
+    }
+
+    function updateCalendarCellDisplay(day, prefix) {
+        // カレンダーセルは、現在表示中の月が「12月」である場合のみ存在する
+        // DOM要素がない場合（11月表示中など）は何もしない
+        const cell = document.getElementById(`${prefix}-day-${day}`);
+        if(!cell) return;
+        
+        cell.className = 'date-cell'; 
+        if(tempSelectedDates.includes(day)) {
+            cell.classList.add('requested');
+            cell.innerHTML = `${day}<div class="badge">希望中</div>`;
+        } else {
+            cell.classList.add('open');
+            cell.innerHTML = `${day}<div class="badge">募集中</div>`;
+        }
+    }
+
+    function removeCard(day, cardId, containerId) {
+        const card = document.getElementById(cardId);
+        if(card) {
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                if(card.parentNode) card.parentNode.removeChild(card);
+                const container = document.getElementById(containerId);
+                if(container && container.children.length === 0) {
+                     container.innerHTML = `<div class="empty-state-msg">カレンダーの日付をタップしてください</div>`;
+                }
+            }, 300);
+        }
+    }
+
+    /* --- 送信処理 --- */
+    function submitFromVoteTab() {
+        finalizeSubmission();
+    }
+    function submitRequests() {
+        finalizeSubmission();
+    }
+    function finalizeSubmission() {
+        requestedDates = [...tempSelectedDates];
+        closeSelectionModal(); 
+        
+        const list = document.getElementById('success-list');
+        let html = '';
+        requestedDates.sort((a,b)=>a-b).forEach(d => {
+            const i = rideDetails[d];
+            if(i) {
+                html += `<li style="margin-bottom:5px;">
+                            ${i.date} ${i.time} 
+                            <br><span style="font-size:11px; color:#666;">（${i.type}）</span>
+                         </li>`;
+            }
+        });
+        if(html === '') html = '<li>（予約なし）</li>';
+        list.innerHTML = html;
+
+        document.getElementById('success-screen').style.display = 'flex';
+        
+        // 送信後はホームに戻る際、ホームカレンダーも最新化
+        renderCalendar('home');
+        updateUserPlanArea();
+        updateFooter();
+    }
+
+    function returnToHome() {
+        document.getElementById('success-screen').style.display = 'none';
+        switchTab('home'); 
+    }
+    function openCancelAlert() {
+        document.getElementById('cancel-alert').style.display = 'flex';
+    }
+    function closeCancelAlert() {
+        document.getElementById('cancel-alert').style.display = 'none';
+    }
+    function confirmCancel() {
+        requestedDates = [];
+        closeCancelAlert();
+        renderCalendar('home');
+        updateUserPlanArea();
+        updateFooter();
+    }
+</script>
+</body>
+</html>
