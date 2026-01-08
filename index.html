@@ -290,47 +290,39 @@
         <div id="view-home" class="view-section active">
             <div class="section-title">乗車希望</div>
             <div class="info-box" id="user-plan-area">乗車希望はありません</div>
-
-            <div class="section-title">現在募集中の日程</div>
-            <div class="card calendar-container">
-                <div class="calendar-nav">
-                    <button class="nav-btn" onclick="changeMonth(-1, 'home')">＜</button>
-                    <span id="home-month-label">2025年11月</span>
-                    <button class="nav-btn" onclick="changeMonth(1, 'home')">＞</button>
-                </div>
-                <div class="calendar-grid-wrapper" id="home-grid-wrapper">
-                    <div class="calendar-grid" id="home-calendar-grid">
-                    </div>
-                    </div>
+            
+            <div style="margin-top:30px; padding-bottom:20px;">
+                <button class="btn btn-primary" onclick="switchTab('vote')">
+                    乗車希望の投票はこちらから
+                </button>
             </div>
         </div>
 
         <div id="view-vote" class="view-section">
-            <div class="section-title" style="margin-bottom:10px;">日付を選択してください</div>
-            
-            <div class="calendar-container">
+            <div class="calendar-container" style="margin-bottom: 8px;">
                 <div class="calendar-nav">
                     <button class="nav-btn" onclick="changeMonth(-1, 'vote')">＜</button>
-                    <span id="vote-month-label">2025年11月</span>
+                    <span id="vote-month-label" style="font-size: 13px;">2025年11月</span>
                     <button class="nav-btn" onclick="changeMonth(1, 'vote')">＞</button>
                 </div>
                 <div class="calendar-grid-wrapper" id="vote-grid-wrapper">
                     <div class="calendar-grid" id="vote-calendar-grid">
                     </div>
-                    </div>
+                </div>
             </div>
 
-            <div style="height: 1px; background: #eee; margin: 20px 0;"></div>
+            <div style="height: 1px; background: #eee; margin: 8px 0;"></div>
 
-            <div id="vote-page-list">
+            <div id="vote-page-list" style="min-height: 60px; max-height: 120px; overflow-y: auto; font-size: 13px;">
                 <div class="empty-state-msg">
                     上のカレンダーの日付をタップすると<br>詳細が表示されます
                 </div>
             </div>
 
-            <div style="margin-top:30px; padding-bottom:20px;">
-                <button class="btn btn-primary" onclick="submitFromVoteTab()">
-                    ✔ 選択した内容を送信
+            <div style="margin-top:8px; padding-bottom:8px; display:flex; gap:8px;">
+                <button class="btn" style="background:#ddd; color:#555; flex:1; padding: 8px;" onclick="cancelVoteTab()">戻る</button>
+                <button class="btn btn-primary" style="flex:1; padding: 8px;" onclick="submitFromVoteTab()">
+                    ✔ 送信
                 </button>
             </div>
         </div>
@@ -379,9 +371,6 @@
     <div class="nav-bar">
         <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
             <span class="nav-icon">🏠</span>ホーム
-        </div>
-        <div class="nav-item" id="nav-vote" onclick="switchTab('vote')">
-            <span class="nav-icon">🗳️</span>投票
         </div>
         <div class="nav-item" id="nav-record" onclick="switchTab('record')">
             <span class="nav-icon">📖</span>記録
@@ -482,6 +471,7 @@
 
     /* --- 状態管理 --- */
     let requestedDates = []; 
+    let requestedDatesSnapshot = []; // 投票タブ入時の希望状態スナップショット
     let tempSelectedDates = []; 
     let tempClickedDate = null; // 選択中の日付（クリック後、まだ希望に追加していない状態）
 
@@ -582,7 +572,10 @@
     /* --- タブ切り替え --- */
     function switchTab(tabName) {
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById(`nav-${tabName}`).classList.add('active');
+        const navElement = document.getElementById(`nav-${tabName}`);
+        if (navElement) {
+            navElement.classList.add('active');
+        }
 
         document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
         document.getElementById(`view-${tabName}`).classList.add('active');
@@ -596,7 +589,6 @@
             footer.style.display = 'none';
             document.getElementById('app-header').innerText = '投票';
             // 投票タブ初期化
-            tempSelectedDates = [...requestedDates];
             initVoteScreen();
         } else if(tabName === 'record') {
             footer.style.display = 'none';
@@ -689,7 +681,7 @@
             year: s.year,
             month: s.month,
             targetId: `${viewName}-cal`,
-            selectedDates: (viewName === 'home') ? requestedDates : tempSelectedDates,
+            selectedDates: (viewName === 'home') ? [] : (viewName === 'vote') ? requestedDates : tempSelectedDates,
             isInteractive: (viewName !== 'home'), // home以外はクリック可能
             clickHandlerName: (viewName === 'vote') ? 'onVoteCalendarClick' : 'onModalCalendarClick'
         };
@@ -796,27 +788,27 @@
                 <button class="btn btn-danger-outline" onclick="openCancelAlert()">希望内容をすべて取り消し</button>
             `;
         } else {
-            footer.innerHTML = `
-                <button class="btn btn-primary" onclick="openSelectionModal()">乗車希望の投票はこちらから</button>
-            `;
+            footer.innerHTML = ``;
         }
     }
 
     /* --- 投票タブ --- */
     function initVoteScreen() {
-        // 本日に最も近い募集日時から表示開始
-        const closestMonth = getClosestRecruitmentMonth();
-        viewState.vote = closestMonth;
+        // 投票タブに入る時点での希望状態をスナップショットに保存
+        requestedDatesSnapshot = [...requestedDates];
+        
+        // 本日に最も近い募集日時から表示開始（初回のみ）
+        if (!viewState.vote || !viewState.vote.initialized) {
+            const closestMonth = getClosestRecruitmentMonth();
+            viewState.vote = closestMonth;
+            viewState.vote.initialized = true;
+        }
         
         renderCalendar('vote');
 
         const list = document.getElementById('vote-page-list');
-        // リストは再描画せず維持するか、月が変わったらクリアするか？
-        // 今回は「カレンダーで選んだものを下に溜める」UIなので、
-        // 月を変えても下のリストは維持する（別月選択も可能にするため）が、
-        // データが12月しかないので、他月では押せない。
         
-        // 初回のみメッセージを表示（すでにカードがあればそのまま）
+        // 初回のみメッセージを表示
         if (list.children.length === 0 || list.querySelector('.empty-state-msg')) {
              list.innerHTML = `
                 <div class="empty-state-msg">
@@ -824,11 +816,59 @@
                 </div>
             `;
         }
+        
+        // tempClickedDateをリセット
+        tempClickedDate = null;
     }
     function onVoteCalendarClick(day) {
             tempClickedDate = day;
             renderCalendar('vote'); // カレンダーを再描画して選択中状態を表示
-        addCardToContainer(day, 'vote-page-list', 'vote-cal');
+        updateVotePageDisplay(day);
+    }
+    
+    function updateVotePageDisplay(day) {
+        const list = document.getElementById('vote-page-list');
+        list.innerHTML = ''; // リストをクリア
+        
+        const info = rideDetails[day];
+        if (info) {
+            const isSelected = requestedDates.includes(day);
+            const cardDiv = document.createElement('div');
+            const cardId = `card-vote-page-list-${day}`;
+            cardDiv.id = cardId;
+            cardDiv.className = isSelected ? 'ride-item selected' : 'ride-item';
+            
+            let btnHtml = '';
+            const toggleFunc = `toggleVoteCardState(${day})`;
+            if(isSelected) {
+                btnHtml = `<div class="status-box">✔ 希望中</div>
+                           <button class="btn-remove-sm" onclick="${toggleFunc}">取り消し</button>`;
+            } else {
+                btnHtml = `<button class="btn-add" onclick="${toggleFunc}">希望に追加</button>`;
+            }
+            
+            cardDiv.innerHTML = `
+                <div class="action-area">${btnHtml}</div>
+                <div class="ride-info">
+                    <span class="ride-date">📅 ${info.date}</span>
+                    <div class="ride-detail">🕒 ${info.time}</div>
+                    <div class="ride-detail"><span class="type-badge">📝 ${info.type}</span></div>
+                </div>
+            `;
+            
+            list.appendChild(cardDiv);
+        }
+    }
+    
+    function toggleVoteCardState(day) {
+        if(requestedDates.includes(day)) {
+            requestedDates = requestedDates.filter(d => d !== day);
+        } else {
+            requestedDates.push(day);
+        }
+        
+        updateVotePageDisplay(day);
+        updateUserPlanArea();
     }
 
     /* --- モーダル (変更) --- */
@@ -1021,7 +1061,16 @@
 
     /* --- 送信処理 --- */
     function submitFromVoteTab() {
-        finalizeSubmission();
+        // 投票タブからの送信は既にrequestDatesに反映されているので、
+        // 確認メッセージを表示してホームに戻る
+        alert('ご協力ありがとうございました！');
+        switchTab('home');
+    }
+    function cancelVoteTab() {
+        // 編集内容を保存せずホームに戻る（投票タブ入時の状態に復元）
+        requestedDates = [...requestedDatesSnapshot];
+        updateUserPlanArea();
+        switchTab('home');
     }
     function submitRequests() {
         finalizeSubmission();
