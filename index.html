@@ -148,6 +148,11 @@
 
         /* --- カレンダー共通スタイル --- */
         .calendar-container { padding-bottom: 10px; background: #fff; border-radius:12px; }
+                .calendar-grid-wrapper {
+                    touch-action: pan-y;
+                    position: relative;
+                    overflow: hidden;
+                }
         
         /* カレンダーヘッダー（ナビゲーション） */
         .calendar-nav {
@@ -192,7 +197,14 @@
             top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1;
         }
         .date-cell.requested .badge { content: "希望中"; }
-
+        /* 選択中のスタイル（募集中を選択したが、まだ希望に追加していない状態） */
+        .date-cell.selected { color: white; background-color: var(--status-blue); }
+        .date-cell.selected::after {
+            content: ''; position: absolute; width: 40px; height: 40px;
+            background-color: var(--status-blue); border-radius: 50%;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1;
+        }
+        .date-cell.selected .badge { content: "選択中"; }
         /* 本日のスタイル */
         .date-cell.today {
             font-weight: bold;
@@ -286,7 +298,9 @@
                     <span id="home-month-label">2025年11月</span>
                     <button class="nav-btn" onclick="changeMonth(1, 'home')">＞</button>
                 </div>
-                <div class="calendar-grid" id="home-calendar-grid">
+                <div class="calendar-grid-wrapper" id="home-grid-wrapper">
+                    <div class="calendar-grid" id="home-calendar-grid">
+                    </div>
                     </div>
             </div>
         </div>
@@ -300,7 +314,9 @@
                     <span id="vote-month-label">2025年11月</span>
                     <button class="nav-btn" onclick="changeMonth(1, 'vote')">＞</button>
                 </div>
-                <div class="calendar-grid" id="vote-calendar-grid">
+                <div class="calendar-grid-wrapper" id="vote-grid-wrapper">
+                    <div class="calendar-grid" id="vote-calendar-grid">
+                    </div>
                     </div>
             </div>
 
@@ -391,7 +407,9 @@
                         <span id="modal-month-label">2025年11月</span>
                         <button class="nav-btn" onclick="changeMonth(1, 'modal')">＞</button>
                     </div>
-                    <div class="calendar-grid" id="modal-calendar-grid">
+                    <div class="calendar-grid-wrapper" id="modal-grid-wrapper">
+                        <div class="calendar-grid" id="modal-calendar-grid">
+                        </div>
                         </div>
                 </div>
 
@@ -465,6 +483,7 @@
     /* --- 状態管理 --- */
     let requestedDates = []; 
     let tempSelectedDates = []; 
+    let tempClickedDate = null; // 選択中の日付（クリック後、まだ希望に追加していない状態）
 
     // 各ビューごとの現在の表示年月
     let viewState = {
@@ -481,8 +500,59 @@
         renderCalendar('home');
         updateFooter();
         updateUserPlanArea();
+        
+        // タッチスライド機能の初期化
+        initCalendarSwipe('home');
+        initCalendarSwipe('vote');
+        initCalendarSwipe('modal');
     };
 
+    /* --- カレンダースライド機能 --- */
+    let swipeState = {
+        startX: 0,
+        startY: 0,
+        isHorizontalSwipe: false
+    };
+
+    function initCalendarSwipe(viewName) {
+        const wrapper = document.getElementById(`${viewName}-grid-wrapper`);
+        if (!wrapper) return;
+        
+        wrapper.addEventListener('touchstart', (e) => {
+            swipeState.startX = e.touches[0].clientX;
+            swipeState.startY = e.touches[0].clientY;
+            swipeState.isHorizontalSwipe = false;
+        }, false);
+
+        wrapper.addEventListener('touchmove', (e) => {
+            const moveX = e.touches[0].clientX;
+            const moveY = e.touches[0].clientY;
+            const diffX = Math.abs(moveX - swipeState.startX);
+            const diffY = Math.abs(moveY - swipeState.startY);
+            
+            // 水平スライプをより強く判定（水平方向の移動がより大きい場合）
+            if (diffX > 10 && diffX > diffY * 1.5) {
+                swipeState.isHorizontalSwipe = true;
+                e.preventDefault(); // 垂直スクロール抑止
+            }
+        }, false);
+
+        wrapper.addEventListener('touchend', (e) => {
+            if (!swipeState.isHorizontalSwipe) return;
+            
+            const endX = e.changedTouches[0].clientX;
+            const diff = endX - swipeState.startX;
+            const threshold = 50; // スライプ判定の閾値（ピクセル）
+            
+            if (diff > threshold) {
+                // 右スライプ → 前月へ
+                changeMonth(-1, viewName);
+            } else if (diff < -threshold) {
+                // 左スライプ → 次月へ
+                changeMonth(1, viewName);
+            }
+        }, false);
+    }
     /* --- 本日に最も近い募集日時を取得 --- */
     function getClosestRecruitmentMonth() {
         // 現在のデータは2025年12月のみ
@@ -667,10 +737,14 @@
             // 状態判定
             const isOpen = hasDataMonth && openDatesDec2025.includes(day);
             const isReq = hasDataMonth && opt.selectedDates.includes(day);
+            const isClicked = tempClickedDate === day; // 選択中判定
 
             if(isReq) {
                 cls += ' requested';
                 inner += '<div class="badge">希望中</div>';
+                        } else if(isClicked) {
+                            cls += ' selected';
+                            inner += '<div class="badge">選択中</div>';
             } else if(isOpen) {
                 cls += ' open';
                 inner += '<div class="badge">募集中</div>';
@@ -752,6 +826,8 @@
         }
     }
     function onVoteCalendarClick(day) {
+            tempClickedDate = day;
+            renderCalendar('vote'); // カレンダーを再描画して選択中状態を表示
         addCardToContainer(day, 'vote-page-list', 'vote-cal');
     }
 
@@ -789,6 +865,8 @@
         document.getElementById('selection-modal').classList.remove('active');
     }
     function onModalCalendarClick(day) {
+            tempClickedDate = day;
+            renderCalendar('modal'); // カレンダーを再描画して選択中状態を表示
         addCardToContainer(day, 'modal-page-list', 'modal-cal');
     }
 
