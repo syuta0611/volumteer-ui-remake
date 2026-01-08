@@ -249,6 +249,24 @@
         .empty-state-msg {
             text-align: center; color: #999; font-size: 13px; margin-top: 50px; margin-bottom: 50px;
         }
+
+        /* シフトバー強調スタイル */
+        .shift-bar-indicator {
+            display: inline-block;
+            background: #FF6B6B;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
     </style>
 </head>
 <body>
@@ -384,6 +402,9 @@
             </div>
 
             <div class="sheet-footer">
+                <div id="hope-count-display" style="text-align: center; color: #3840a0; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                    現在、0件希望中
+                </div>
                 <div style="display:flex; gap:10px;">
                     <button class="btn" style="background:#ddd; color:#555; width:30%;" onclick="closeSelectionModal()">戻る</button>
                     <button class="btn btn-primary" style="width:70%;" onclick="submitRequests()">変更を保存</button>
@@ -454,10 +475,39 @@
 
     window.onload = () => {
         // 初期表示
+        // 本日に最も近い募集日時を自動判定
+        const closestMonth = getClosestRecruitmentMonth();
+        viewState.home = closestMonth;
         renderCalendar('home');
         updateFooter();
         updateUserPlanArea();
     };
+
+    /* --- 本日に最も近い募集日時を取得 --- */
+    function getClosestRecruitmentMonth() {
+        // 現在のデータは2025年12月のみ
+        // 本日: 2025年11月25日
+        // 本日以降で最初の募集月 → 12月（次月が最初の募集月）
+        const recruitmentMonths = [{ year: 2025, month: 12 }];
+        
+        for (let record of recruitmentMonths) {
+            // 当月に本日以降の募集がある？
+            if (record.year > TODAY_YEAR || 
+                (record.year === TODAY_YEAR && record.month > TODAY_MONTH)) {
+                return record;
+            }
+            if (record.year === TODAY_YEAR && record.month === TODAY_MONTH) {
+                // 当月で本日以降の募集を探す
+                for (let dateKey of openDatesDec2025) {
+                    if (dateKey >= TODAY_DATE) {
+                        return record;
+                    }
+                }
+            }
+        }
+        // 今年内に募集がない場合は12月を表示
+        return { year: 2025, month: 12 };
+    }
 
     /* --- タブ切り替え --- */
     function switchTab(tabName) {
@@ -477,7 +527,6 @@
             document.getElementById('app-header').innerText = '投票';
             // 投票タブ初期化
             tempSelectedDates = [...requestedDates];
-            viewState.vote = { year: 2025, month: 11 }; // リセットする場合
             initVoteScreen();
         } else if(tabName === 'record') {
             footer.style.display = 'none';
@@ -681,6 +730,10 @@
 
     /* --- 投票タブ --- */
     function initVoteScreen() {
+        // 本日に最も近い募集日時から表示開始
+        const closestMonth = getClosestRecruitmentMonth();
+        viewState.vote = closestMonth;
+        
         renderCalendar('vote');
 
         const list = document.getElementById('vote-page-list');
@@ -722,6 +775,7 @@
                 addCardToContainer(day, 'modal-page-list', 'modal-cal', false); 
             });
         }
+        updateHopeCountDisplay(); // 希望件数を表示
         document.getElementById('selection-modal').classList.add('active');
     }
 
@@ -767,6 +821,30 @@
 
         renderCardContent(cardDiv, day, isSelected, info, containerId, calendarPrefix);
         listContainer.appendChild(cardDiv);
+
+        // カード追加後、スクロールしてカードが見えるようにする
+        setTimeout(() => {
+            cardDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+
+        // シフトバーが出ていることを示すインジケーターを一度だけ表示（投票タブ、モーダルの場合）
+        if ((containerId === 'vote-page-list' || containerId === 'modal-page-list') && 
+            !listContainer.querySelector('.shift-bar-indicator')) {
+            const indicator = document.createElement('div');
+            indicator.className = 'shift-bar-indicator';
+            indicator.textContent = '⬇️ シフト情報が表示されました';
+            listContainer.insertBefore(indicator, listContainer.firstChild);
+            
+            // 3秒後に自動消去
+            setTimeout(() => {
+                if (indicator.parentNode) {
+                    indicator.style.opacity = '0';
+                    indicator.style.transform = 'translateY(-10px)';
+                    indicator.style.transition = 'all 0.3s ease';
+                    setTimeout(() => indicator.remove(), 300);
+                }
+            }, 3000);
+        }
     }
 
     function renderCardContent(element, day, isSelected, info, containerId, calendarPrefix) {
@@ -809,6 +887,7 @@
             renderCardContent(card, day, tempSelectedDates.includes(day), info, containerId, calendarPrefix);
         }
         updateCalendarCellDisplay(day, calendarPrefix);
+        updateHopeCountDisplay(); // 希望件数を更新
     }
 
     function updateCalendarCellDisplay(day, prefix) {
@@ -824,6 +903,26 @@
         } else {
             cell.classList.add('open');
             cell.innerHTML = `${day}<div class="badge">募集中</div>`;
+        }
+    }
+
+    /* --- 希望件数表示の更新 --- */
+    function updateHopeCountDisplay() {
+        const countElement = document.getElementById('hope-count-display');
+        if (countElement) {
+            const count = tempSelectedDates.length;
+            countElement.textContent = `現在、${count}件希望中`;
+            
+            // 件数が0になった場合は軽く点灯、0以上の場合は強調
+            if (count === 0) {
+                countElement.style.color = '#999';
+                countElement.style.fontWeight = 'normal';
+            } else {
+                countElement.style.color = '#3840a0';
+                countElement.style.fontWeight = 'bold';
+                countElement.style.animation = 'pulse 0.5s ease';
+                setTimeout(() => countElement.style.animation = '', 500);
+            }
         }
     }
 
