@@ -93,7 +93,7 @@
         /* --- リストアイテム（カード） --- */
         .ride-item {
             background: white; border-radius: 12px; padding: 15px;
-            margin-bottom: 12px; display: flex; align-items: flex-start;
+            margin-bottom: 12px; display: flex; align-items: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #eee;
             position: relative;
             animation: slideUp 0.3s ease;
@@ -113,7 +113,11 @@
         .item-close:hover { color: #999; }
 
         .action-area {
-            width: 80px; margin-right: 15px; display: flex; flex-direction: column; gap: 5px;
+            width: auto; display: flex; flex-direction: column; gap: 5px; justify-content: center;
+            min-width: 60px; flex-shrink: 0;
+        }
+        .action-area-right {
+            width: 80px; margin-left: auto; display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;
         }
         .btn-add {
             background-color: var(--status-blue); color: white; border: none;
@@ -121,16 +125,22 @@
             cursor: pointer; width: 100%;
         }
         .status-box {
-            border: 1px solid var(--status-blue); background-color: #f0f4ff;
-            color: var(--status-blue); border-radius: 6px; padding: 8px 0;
+            border: 1px solid var(--status-orange); background-color: #fff5e6;
+            color: var(--status-orange); border-radius: 6px; padding: 8px 0;
             text-align: center; font-size: 11px; font-weight: bold;
+        }
+        .status-box-disabled {
+            background-color: #f5f5f5;
+            color: #999; border-radius: 6px; padding: 8px 0;
+            text-align: center; font-size: 11px; font-weight: bold;
+            border: none;
         }
         .btn-remove-sm {
             background: #eee; border: none; color: #666; font-size: 10px;
             border-radius: 4px; padding: 4px 0; cursor: pointer; width: 100%; margin-top: 4px;
         }
         
-        .ride-info { flex: 1; margin-right: 20px; }
+        .ride-info { flex: 1; margin: 0 15px; }
         .ride-date { font-weight: bold; font-size: 14px; margin-bottom: 5px; display:block;}
         .ride-detail { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; margin-bottom: 3px;}
 
@@ -838,22 +848,26 @@
             cardDiv.id = cardId;
             cardDiv.className = isSelected ? 'ride-item selected' : 'ride-item';
             
-            let btnHtml = '';
+            let leftActionHtml = '';
+            let rightActionHtml = '';
             const toggleFunc = `toggleVoteCardState(${day})`;
+            
             if(isSelected) {
-                btnHtml = `<div class="status-box">✔ 希望中</div>
-                           <button class="btn-remove-sm" onclick="${toggleFunc}">取り消し</button>`;
+                leftActionHtml = `<div class="status-box">✔ 希望中</div>`;
+                rightActionHtml = `<button class="btn-add" onclick="${toggleFunc}" style="background-color: var(--status-orange);">取り消し</button>`;
             } else {
-                btnHtml = `<button class="btn-add" onclick="${toggleFunc}">希望に追加</button>`;
+                leftActionHtml = `<div class="status-box-disabled">未希望</div>`;
+                rightActionHtml = `<button class="btn-add" onclick="${toggleFunc}">追加</button>`;
             }
             
             cardDiv.innerHTML = `
-                <div class="action-area">${btnHtml}</div>
+                <div class="action-area">${leftActionHtml}</div>
                 <div class="ride-info">
                     <span class="ride-date">📅 ${info.date}</span>
                     <div class="ride-detail">🕒 ${info.time}</div>
                     <div class="ride-detail"><span class="type-badge">📝 ${info.type}</span></div>
                 </div>
+                <div class="action-area-right">${rightActionHtml}</div>
             `;
             
             list.appendChild(cardDiv);
@@ -966,24 +980,27 @@
     }
 
     function renderCardContent(element, day, isSelected, info, containerId, calendarPrefix) {
-        let btnHtml = '';
+        let leftActionHtml = '';
+        let rightActionHtml = '';
         const toggleFunc = `toggleCardState(${day}, '${element.id}', '${calendarPrefix}')`;
         const removeFunc = `removeCard(${day}, '${element.id}', '${containerId}')`;
 
         if(isSelected) {
-            btnHtml = `<div class="status-box">✔ 希望中</div>
-                       <button class="btn-remove-sm" onclick="${toggleFunc}">取り消し</button>`;
+            leftActionHtml = `<div class="status-box">✔ 希望中</div>`;
+            rightActionHtml = `<button class="btn-add" onclick="${toggleFunc}" style="background-color: var(--status-orange);">取り消し</button>`;
         } else {
-            btnHtml = `<button class="btn-add" onclick="${toggleFunc}">希望に追加</button>`;
+            leftActionHtml = `<div class="status-box-disabled">未希望</div>`;
+            rightActionHtml = `<button class="btn-add" onclick="${toggleFunc}">追加</button>`;
         }
 
         element.innerHTML = `
-            <div class="action-area">${btnHtml}</div>
+            <div class="action-area">${leftActionHtml}</div>
             <div class="ride-info">
                 <span class="ride-date">📅 ${info.date}</span>
                 <div class="ride-detail">🕒 ${info.time}</div>
                 <div class="ride-detail"><span class="type-badge">📝 ${info.type}</span></div>
             </div>
+            <div class="action-area-right">${rightActionHtml}</div>
             <div class="item-close" onclick="${removeFunc}">×</div>
         `;
     }
