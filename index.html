@@ -479,6 +479,21 @@
         </div>
     </div>
 
+    <!-- カスタム：編集破棄確認モーダル（投票画面の戻る用） -->
+    <div class="overlay-screen" id="vote-cancel-confirm" style="display:none;">
+        <div class="dialog-box">
+            <h3 style="font-size:18px; margin:0 0 10px 0;">このまま戻りますか？</h3>
+            <div style="font-size:13px; color:#333; line-height:1.6;">
+                変更内容は保存されません。<br>
+                元の希望内容に戻ります。
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                <button class="btn btn-danger-fill" onclick="confirmCancelVote()">戻る（破棄する）</button>
+                <button class="btn" style="background:#eee; color:#333;" onclick="hideVoteCancelConfirm()">このまま編集を続ける</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -553,6 +568,9 @@
         vote: { year: 2025, month: 11 }, // 投票も今日からスタート（遷移して12月へ）
         modal: { year: 2025, month: 11 } 
     };
+
+    // 一時的にキャンセル確認で使うスナップショット保存用
+    let pendingCancelSnapshot = null;
 
     window.onload = () => {
         // 初期表示
@@ -1166,19 +1184,68 @@
 
     /* --- 送信処理 --- */
     function submitFromVoteTab() {
-        // 投票タブからの送信は既にrequestDatesに反映されているので、
-        // 確認メッセージを表示してホームに戻る
-        alert('ご協力ありがとうございました！');
-        switchTab('home');
+        // 投票タブからの送信は既に requestedDates に反映されている。
+        // 自動でホームに戻さず、送信確認画面を表示する（読み取り専用）。
+        const list = document.getElementById('success-list');
+        let html = '';
+        requestedDates.sort((a,b)=>a-b).forEach(d => {
+            const i = rideDetails[d];
+            if(i) {
+                html += `<li style="margin-bottom:5px;">\n                            ${i.date} ${i.time} \n                            <br><span style="font-size:11px; color:#666;">（${i.type}）</span>\n                         </li>`;
+            }
+        });
+        if(html === '') html = '<li>（予約なし）</li>';
+        list.innerHTML = html;
+
+        // 表示（操作不可の確認画面）
+        document.getElementById('success-screen').style.display = 'flex';
     }
     function cancelVoteTab() {
-        // 編集内容を保存せずホームに戻る（投票タブ入時の状態に復元）
-        requestedDates = [...requestedDatesSnapshot];
+        // 編集内容がある場合は確認ダイアログを表示して破棄するか選ばせる
+        const snapshot = Array.isArray(requestedDatesSnapshot) ? [...requestedDatesSnapshot].sort((a,b)=>a-b) : [];
+        const current = Array.isArray(requestedDates) ? [...requestedDates].sort((a,b)=>a-b) : [];
+
+        const isSame = (snapshot.length === current.length) && snapshot.every((v, i) => v === current[i]);
+
+        if (!isSame) {
+            // 保存されたスナップショットを保持してモーダルで確認
+            pendingCancelSnapshot = Array.isArray(requestedDatesSnapshot) ? [...requestedDatesSnapshot] : [];
+            showVoteCancelConfirm();
+            return; // モーダルでユーザーが決定するまで処理を中断
+        }
+
+        // 破棄（または変更がない場合）→ 元の希望状態に戻してホームへ
+        requestedDates = Array.isArray(requestedDatesSnapshot) ? [...requestedDatesSnapshot] : [];
         updateUserPlanArea();
         switchTab('home');
     }
     function submitRequests() {
         finalizeSubmission();
+    }
+    
+    /* --- カスタム：投票画面の戻る（破棄）確認モーダル --- */
+    function showVoteCancelConfirm() {
+        const modal = document.getElementById('vote-cancel-confirm');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function hideVoteCancelConfirm() {
+        const modal = document.getElementById('vote-cancel-confirm');
+        if (modal) modal.style.display = 'none';
+        pendingCancelSnapshot = null;
+    }
+
+    function confirmCancelVote() {
+        // ユーザーが破棄を選択した場合の処理
+        if (Array.isArray(pendingCancelSnapshot)) {
+            requestedDates = [...pendingCancelSnapshot];
+        } else {
+            requestedDates = [];
+        }
+        tempSelectedDates = [];
+        hideVoteCancelConfirm();
+        updateUserPlanArea();
+        switchTab('home');
     }
     function finalizeSubmission() {
         requestedDates = [...tempSelectedDates];
