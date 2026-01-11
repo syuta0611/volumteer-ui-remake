@@ -188,6 +188,11 @@
             border-radius: 50%; position: relative; font-size: 15px; color: #333; isolation: isolate; z-index: 1;
             transition: background 0.2s;
         }
+        /* 非募集日のグレーアウト */
+        .date-cell:not(.open):not(.requested):not(.selected):not(.today) {
+            opacity: 0.4;
+            color: #999;
+        }
         .badge { font-size: 9px; line-height: 1; margin-top: 2px; font-weight: bold; }
         
         /* 募集中のスタイル */
@@ -227,6 +232,10 @@
         /* バッジがない場合（募集中でも希望中でもない）の「今日」表示 */
         .date-cell.today:not(.open):not(.requested) .badge {
             content: "今日"; color: var(--today-color);
+        }
+        /* 募集がない月の今日は存在感を弱める */
+        .date-cell.today:not(.open) {
+            opacity: 0.5;
         }
 
         /* フッター・ナビ */
@@ -288,6 +297,14 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        /* トースト通知 */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background-color: #333; color: white; padding: 12px 20px;
+            border-radius: 8px; font-size: 14px; z-index: 300;
+            animation: slideUp 0.3s ease-out;
         }
     </style>
 </head>
@@ -458,6 +475,24 @@
     const TODAY_YEAR = 2025;
     const TODAY_MONTH = 11; // 11月
     const TODAY_DATE = 25;
+
+    /* --- トースト表示関数 --- */
+    function showToast(message, duration = 2000) {
+        // 既存のトースト削除
+        const existingToast = document.querySelector('.toast');
+        if (existingToast) existingToast.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s ease-out';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
 
     // 募集データ（これは2025年12月のみとする）
     const rideDetails = {
@@ -756,8 +791,11 @@
             if(opt.isInteractive && isOpen) {
                 clickAttr = `onclick="${opt.clickHandlerName}(${day})" style="cursor:pointer;"`;
                 clickAttr += ` id="${opt.targetId}-day-${day}"`;
+            } else if(opt.isInteractive && hasDataMonth && !isOpen) {
+                // 募集データがある月だが、この日は募集なし → トースト表示
+                clickAttr = `onclick="showToast('この日は募集がありません')" style="cursor:not-allowed;"`;
             } else {
-                // インタラクティブでない、または募集日でない場合
+                // インタラクティブでない場合（ホーム画面など）
                 // 特別なスタイルはなし（デフォルト）
             }
             
