@@ -306,6 +306,17 @@
             border-radius: 8px; font-size: 14px; z-index: 300;
             animation: slideUp 0.3s ease-out;
         }
+
+        /* 未保存バナー */
+        .unsaved-banner {
+            background-color: #fff3cd; border: 1px solid #ffc107;
+            color: #856404; padding: 12px 15px; border-radius: 6px;
+            font-size: 13px; font-weight: 500; text-align: center;
+            margin-bottom: 10px; display: none; animation: slideUp 0.3s ease-out;
+        }
+        .unsaved-banner.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -436,6 +447,7 @@
             </div>
 
             <div class="sheet-footer">
+                <div id="unsaved-banner" class="unsaved-banner">⚠️ 変更はまだ送信されていません</div>
                 <div id="hope-count-display" style="text-align: center; color: #3840a0; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
                     現在、0件希望中
                 </div>
@@ -492,6 +504,21 @@
             toast.style.transition = 'opacity 0.3s ease-out';
             setTimeout(() => toast.remove(), 300);
         }, duration);
+    }
+
+    /* --- 未保存バナー制御 --- */
+    function showUnsavedBanner() {
+        const banner = document.getElementById('unsaved-banner');
+        if (banner) {
+            banner.classList.add('show');
+        }
+    }
+
+    function hideUnsavedBanner() {
+        const banner = document.getElementById('unsaved-banner');
+        if (banner) {
+            banner.classList.remove('show');
+        }
     }
 
     // 募集データ（これは2025年12月のみとする）
@@ -921,12 +948,32 @@
         
         updateVotePageDisplay(day);
         updateUserPlanArea();
+        updateVoteCalendarCell(day); // カレンダーセル即時更新
+    }
+
+    /* --- 投票画面カレンダーセル即時更新 --- */
+    function updateVoteCalendarCell(day) {
+        const cell = document.getElementById(`vote-cal-day-${day}`);
+        if (!cell) return; // セルが存在しない場合は処理終了
+        
+        const isRequested = requestedDates.includes(day);
+        
+        // クラスを更新
+        cell.className = 'date-cell';
+        if (isRequested) {
+            cell.classList.add('requested');
+            cell.innerHTML = `${day}<div class="badge">希望中</div>`;
+        } else {
+            cell.classList.add('open');
+            cell.innerHTML = `${day}<div class="badge">募集中</div>`;
+        }
     }
 
     /* --- モーダル (変更) --- */
     function openSelectionModal() {
         tempSelectedDates = [...requestedDates];
         viewState.modal = { year: 2025, month: 11 }; // 今日からスタート
+        hideUnsavedBanner(); // モーダル開時は未保存バナー非表示
         
         renderModalCalendar();
 
@@ -1015,6 +1062,7 @@
                 }
             }, 3000);
         }
+        showUnsavedBanner(); // 未保存バナー表示
     }
 
     function renderCardContent(element, day, isSelected, info, containerId, calendarPrefix) {
@@ -1061,6 +1109,7 @@
         }
         updateCalendarCellDisplay(day, calendarPrefix);
         updateHopeCountDisplay(); // 希望件数を更新
+        showUnsavedBanner(); // 未保存バナー表示
     }
 
     function updateCalendarCellDisplay(day, prefix) {
@@ -1110,6 +1159,7 @@
                 if(container && container.children.length === 0) {
                      container.innerHTML = `<div class="empty-state-msg">カレンダーの日付をタップしてください</div>`;
                 }
+                showUnsavedBanner(); // 未保存バナー表示
             }, 300);
         }
     }
@@ -1133,6 +1183,7 @@
     function finalizeSubmission() {
         requestedDates = [...tempSelectedDates];
         closeSelectionModal(); 
+        hideUnsavedBanner(); // 未保存バナー非表示
         
         const list = document.getElementById('success-list');
         let html = '';
