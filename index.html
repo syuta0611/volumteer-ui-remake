@@ -331,6 +331,9 @@
                     乗車希望の投票はこちらから
                 </button>
             </div>
+
+            <div class="section-title">あなたの確定したスケジュール</div>
+            <div class="info-box" id="confirmed-schedule-area">確定したスケジュールはまだありません</div>
         </div>
 
         <div id="view-vote" class="view-section">
@@ -556,6 +559,14 @@
     // 2025年12月で以前募集されていた日付（募集終了と表示するための参照）
     const closedDatesDec2025 = [2, 3, 5, 8, 9, 12, 16, 17, 19, 22, 23, 24, 26];
 
+    // 確定したスケジュール（管理者が設定）
+    // 形式: { date: "日付", time: "時間", type: "運行種別", driver: "運転手", assistant: "添乗員" }
+    let confirmedSchedules = [
+        { date: "2026年1月16日（金）", time: "10:00 ~ 11:30", type: "循環ルート", driver: "鈴木さん", assistant: "あなた" },
+        { date: "2026年1月20日（火）", time: "14:00 ~ 15:30", type: "循環ルート", driver: "田中さん", assistant: "あなた" },
+        { date: "2026年1月23日（金）", time: "10:00 ~ 11:30", type: "循環ルート", driver: "佐藤さん", assistant: "あなた" }
+    ];
+
     /* --- 状態管理 --- */
     let requestedDates = []; 
     let requestedDatesSnapshot = []; // 投票タブ入時の希望状態スナップショット
@@ -580,6 +591,7 @@
         renderCalendar('home');
         updateFooter();
         updateUserPlanArea();
+        updateConfirmedScheduleArea(); // 確定スケジュール初期表示
         
         // タッチスライド機能の初期化
         initCalendarSwipe('home');
@@ -675,6 +687,7 @@
             footer.style.display = 'block';
             document.getElementById('app-header').innerText = 'ホーム';
             renderCalendar('home');
+            updateConfirmedScheduleArea(); // 確定スケジュール表示更新
         } else if(tabName === 'vote') {
             footer.style.display = 'none';
             document.getElementById('app-header').innerText = '投票';
@@ -878,6 +891,38 @@
                                 <span class="type-badge" style="margin-left:5px;">${info.type}</span>
                              </div>`;
                 }
+            });
+            area.innerHTML = html;
+            area.style.background = 'white';
+        }
+    }
+
+    /* --- 確定したスケジュール表示 --- */
+    function updateConfirmedScheduleArea() {
+        console.log('updateConfirmedScheduleArea() が呼び出されました');
+        console.log('confirmedSchedules:', confirmedSchedules);
+        const area = document.getElementById('confirmed-schedule-area');
+        if (!area) {
+            console.error('要素 confirmed-schedule-area が見つかりません');
+            return;
+        }
+        if (confirmedSchedules.length === 0) {
+            console.log('配列が空です');
+            area.innerHTML = '確定したスケジュールはまだありません';
+            area.style.textAlign = 'center'; area.style.background = '#f9f9f9';
+        } else {
+            console.log('データを表示します。件数:', confirmedSchedules.length);
+            let html = '';
+            confirmedSchedules.forEach(schedule => {
+                html += `<div style="text-align:left; border-bottom:1px solid #eee; padding:12px 0; color:#333; font-size:13px;">
+                            <div style="font-weight:bold; margin-bottom:5px;">${schedule.date}</div>
+                            <div style="margin-bottom:4px;">⏰ ${schedule.time}</div>
+                            <div style="margin-bottom:8px;"><span class="type-badge">📝 ${schedule.type}</span></div>
+                            <div style="background:#f5f5f5; padding:8px; border-radius:6px; font-size:12px;">
+                                <div style="margin-bottom:3px;">🚗 運転手：${schedule.driver}</div>
+                                <div>👤 添乗員：${schedule.assistant}</div>
+                            </div>
+                         </div>`;
             });
             area.innerHTML = html;
             area.style.background = 'white';
