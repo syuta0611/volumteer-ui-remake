@@ -204,6 +204,10 @@
         }
         .date-cell.open .badge { content: "募集中"; }
 
+        /* 募集終了のスタイル */
+        .date-cell.closed { opacity: 0.5; color: #999; }
+        .date-cell.closed .badge { content: "終了"; }
+
         /* 希望中のスタイル */
         .date-cell.requested { color: white; }
         .date-cell.requested::after {
@@ -220,19 +224,12 @@
             top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1;
         }
         .date-cell.selected .badge { content: "選択中"; }
-        /* 本日のスタイル */
+        /* 本日のスタイル（表示なし） */
         .date-cell.today {
             font-weight: bold;
         }
-        .date-cell.today::before {
-            content: ''; position: absolute; width: 42px; height: 42px;
-            border: 2px solid var(--today-color); border-radius: 50%;
-            top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -2;
-        }
-        /* バッジがない場合（募集中でも希望中でもない）の「今日」表示 */
-        .date-cell.today:not(.open):not(.requested) .badge {
-            content: "今日"; color: var(--today-color);
-        }
+        /* 本日のマーク（表示なし） */
+        /* .date-cell.today の視覚的な強調を削除 */
         /* 募集がない月の今日は存在感を弱める */
         .date-cell.today:not(.open) {
             opacity: 0.5;
@@ -498,10 +495,10 @@
 
 <script>
     /* --- 定数定義 --- */
-    // 本日を 2025年11月25日 とする
-    const TODAY_YEAR = 2025;
-    const TODAY_MONTH = 11; // 11月
-    const TODAY_DATE = 25;
+    // 本日を 2026年1月12日 とする
+    const TODAY_YEAR = 2026;
+    const TODAY_MONTH = 1; // 1月
+    const TODAY_DATE = 12;
 
     /* --- トースト表示関数 --- */
     function showToast(message, duration = 2000) {
@@ -536,25 +533,28 @@
         }
     }
 
-    // 募集データ（これは2025年12月のみとする）
+    // 募集データ（2026年1月）
     const rideDetails = {
-        2:  { date: "12月2日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
-        3:  { date: "12月3日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
-        5:  { date: "12月5日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
-        8:  { date: "12月8日 (月)", time: "10:30 ~ 11:20", type: "フリー運行", youbi: "月" },
-        9:  { date: "12月9日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
-        12: { date: "12月12日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
-        16: { date: "12月16日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
-        17: { date: "12月17日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
-        19: { date: "12月19日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
-        22: { date: "12月22日 (月)", time: "10:30 ~ 12:00", type: "フリー運行", youbi: "月" },
-        23: { date: "12月23日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
-        24: { date: "12月24日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
-        26: { date: "12月26日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" }
+        5:  { date: "1月5日 (月)", time: "13:30 ~ 14:30", type: "フリー運行", youbi: "月" },
+        6:  { date: "1月6日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
+        7:  { date: "1月7日 (水)", time: "14:30 ~ 15:30", type: "フリー運行", youbi: "水" },
+        9:  { date: "1月9日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
+        12: { date: "1月12日 (月)", time: "10:00 ~ 12:00", type: "フリー運行", youbi: "月" },
+        13: { date: "1月13日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
+        16: { date: "1月16日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
+        20: { date: "1月20日 (火)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "火" },
+        21: { date: "1月21日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
+        23: { date: "1月23日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" },
+        26: { date: "1月26日 (月)", time: "10:00 ~ 11:20", type: "フリー運行", youbi: "月" },
+        28: { date: "1月28日 (水)", time: "14:30 ~ 15:20", type: "フリー運行", youbi: "水" },
+        30: { date: "1月30日 (金)", time: "10:00 ~ 11:30", type: "循環ルート", youbi: "金" }
     };
     
-    // データがある月（12月）のみIDキーの配列を作る
-    const openDatesDec2025 = Object.keys(rideDetails).map(Number).sort((a,b)=>a-b);
+    // データがある月（1月）のみIDキーの配列を作る
+    const openDatesJan2026 = Object.keys(rideDetails).map(Number).sort((a,b)=>a-b);
+    
+    // 2025年12月で以前募集されていた日付（募集終了と表示するための参照）
+    const closedDatesDec2025 = [2, 3, 5, 8, 9, 12, 16, 17, 19, 22, 23, 24, 26];
 
     /* --- 状態管理 --- */
     let requestedDates = []; 
@@ -635,10 +635,10 @@
     }
     /* --- 本日に最も近い募集日時を取得 --- */
     function getClosestRecruitmentMonth() {
-        // 現在のデータは2025年12月のみ
-        // 本日: 2025年11月25日
-        // 本日以降で最初の募集月 → 12月（次月が最初の募集月）
-        const recruitmentMonths = [{ year: 2025, month: 12 }];
+        // 現在のデータは2026年1月
+        // 本日: 2026年1月12日
+        // 本日以降で最初の募集月 → 1月（当月が募集月）
+        const recruitmentMonths = [{ year: 2026, month: 1 }];
         
         for (let record of recruitmentMonths) {
             // 当月に本日以降の募集がある？
@@ -648,15 +648,15 @@
             }
             if (record.year === TODAY_YEAR && record.month === TODAY_MONTH) {
                 // 当月で本日以降の募集を探す
-                for (let dateKey of openDatesDec2025) {
+                for (let dateKey of openDatesJan2026) {
                     if (dateKey >= TODAY_DATE) {
                         return record;
                     }
                 }
             }
         }
-        // 今年内に募集がない場合は12月を表示
-        return { year: 2025, month: 12 };
+        // 今年内に募集がない場合は1月を表示
+        return { year: 2026, month: 1 };
     }
 
     /* --- タブ切り替え --- */
@@ -816,31 +816,39 @@
                 cls += ' today';
             }
 
-            // 募集データがある月か？ (今回は2025年12月のみデータありとする)
-            const hasDataMonth = (opt.year === 2025 && opt.month === 12);
+            // 2026年1月：募集中のデータ
+            const isJan2026 = (opt.year === 2026 && opt.month === 1);
+            const isDec2025 = (opt.year === 2025 && opt.month === 12);
             
             // 状態判定
-            const isOpen = hasDataMonth && openDatesDec2025.includes(day);
-            const isReq = hasDataMonth && opt.selectedDates.includes(day);
+            const isOpen = isJan2026 && openDatesJan2026.includes(day);
+            const isClosed = isDec2025 && closedDatesDec2025.includes(day); // 2025年12月で以前募集された日付のみ
+            const isReq = isJan2026 && opt.selectedDates.includes(day);
             const isClicked = tempClickedDate === day; // 選択中判定
 
             if(isReq) {
                 cls += ' requested';
                 inner += '<div class="badge">希望中</div>';
-                        } else if(isClicked) {
-                            cls += ' selected';
-                            inner += '<div class="badge">選択中</div>';
+            } else if(isClicked) {
+                cls += ' selected';
+                inner += '<div class="badge">選択中</div>';
             } else if(isOpen) {
                 cls += ' open';
                 inner += '<div class="badge">募集中</div>';
+            } else if(isClosed) {
+                cls += ' closed';
+                inner += '<div class="badge">終了</div>';
             }
 
             // クリックイベント
             if(opt.isInteractive && isOpen) {
                 clickAttr = `onclick="${opt.clickHandlerName}(${day})" style="cursor:pointer;"`;
                 clickAttr += ` id="${opt.targetId}-day-${day}"`;
-            } else if(opt.isInteractive && hasDataMonth && !isOpen) {
-                // 募集データがある月だが、この日は募集なし → トースト表示
+            } else if(opt.isInteractive && isClosed) {
+                // 2025年12月（募集終了）→ メッセージ表示
+                clickAttr = `onclick="showToast('この日は募集が終了しています')" style="cursor:not-allowed;"`;
+            } else if(opt.isInteractive && isJan2026 && !isOpen) {
+                // 2026年1月だが募集日でない → トースト表示
                 clickAttr = `onclick="showToast('この日は募集がありません')" style="cursor:not-allowed;"`;
             } else {
                 // インタラクティブでない場合（ホーム画面など）
