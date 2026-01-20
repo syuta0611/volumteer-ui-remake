@@ -360,8 +360,22 @@
             <div style="margin-top:8px; padding-bottom:8px; display:flex; gap:8px;">
                 <button class="btn" style="background:#ddd; color:#555; flex:1; padding: 8px;" onclick="cancelVoteTab()">戻る</button>
                 <button class="btn btn-primary" style="flex:1; padding: 8px;" onclick="submitFromVoteTab()">
-                    ✔ 送信
+                    確認する
                 </button>
+            </div>
+        </div>
+
+        <div id="view-confirm" class="view-section">
+            <div class="section-title">この内容で送信してよろしいですか？</div>
+            <div style="margin-top:10px;">
+                <div style="background:#fff; padding:10px; border-radius:8px;">
+                    <ul id="confirm-list" style="padding-left:18px; font-size:13px; margin:0;">
+                    </ul>
+                </div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:8px;">
+                <button class="btn" style="background:#ddd; color:#555; flex:1;" onclick="cancelConfirmation()">キャンセル</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="confirmSendFromConfirm()">送信する</button>
             </div>
         </div>
 
@@ -680,7 +694,9 @@
         }
 
         document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-        document.getElementById(`view-${tabName}`).classList.add('active');
+        // view-confirm は nav-item がないため直接存在チェック
+        const targetView = document.getElementById(`view-${tabName}`);
+        if (targetView) targetView.classList.add('active');
 
         const footer = document.getElementById('footer-actions');
         if(tabName === 'home') {
@@ -693,6 +709,11 @@
             document.getElementById('app-header').innerText = '投票';
             // 投票タブ初期化
             initVoteScreen();
+        } else if(tabName === 'confirm') {
+            // 確認画面（投票→確認）
+            footer.style.display = 'none';
+            document.getElementById('app-header').innerText = '確認';
+            // renderは不要。内容は submitFromVoteTab で設定される。
         } else if(tabName === 'record') {
             footer.style.display = 'none';
             document.getElementById('app-header').innerText = '記録';
@@ -1241,20 +1262,20 @@
     /* --- 送信処理 --- */
     function submitFromVoteTab() {
         // 投票タブからの送信は既に requestedDates に反映されている。
-        // 自動でホームに戻さず、送信確認画面を表示する（読み取り専用）。
-        const list = document.getElementById('success-list');
+        // ここでは既存の送信処理を呼ぶ前に確認画面へ遷移する。
+        const list = document.getElementById('confirm-list');
         let html = '';
         requestedDates.sort((a,b)=>a-b).forEach(d => {
             const i = rideDetails[d];
             if(i) {
-                html += `<li style="margin-bottom:5px;">\n                            ${i.date} ${i.time} \n                            <br><span style="font-size:11px; color:#666;">（${i.type}）</span>\n                         </li>`;
+                html += `<li style="margin-bottom:8px;">${i.date} ${i.time} <br><span style="font-size:11px; color:#666;">（${i.type}）</span></li>`;
             }
         });
         if(html === '') html = '<li>（予約なし）</li>';
         list.innerHTML = html;
 
-        // 表示（操作不可の確認画面）
-        document.getElementById('success-screen').style.display = 'flex';
+        // 確認画面へ遷移（選択済みデータはそのまま保持）
+        switchTab('confirm');
     }
     function cancelVoteTab() {
         // 編集内容がある場合は確認ダイアログを表示して破棄するか選ばせる
@@ -1276,6 +1297,19 @@
         switchTab('home');
     }
     function submitRequests() {
+        finalizeSubmission();
+    }
+
+    // 確認画面でキャンセルした場合、投票画面へ戻す（選択内容は保持）
+    function cancelConfirmation() {
+        switchTab('vote');
+    }
+
+    // 確認画面で「送信する」を押した場合、既存の送信処理を使う
+    function confirmSendFromConfirm() {
+        // finalizeSubmission は tempSelectedDates を参照して requestedDates に反映する実装のため、
+        // 投票画面で選択済みの requestedDates を tempSelectedDates にコピーして渡す
+        tempSelectedDates = Array.isArray(requestedDates) ? [...requestedDates] : [];
         finalizeSubmission();
     }
     
