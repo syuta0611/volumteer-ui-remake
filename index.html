@@ -103,6 +103,11 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        @keyframes centerFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         .ride-item.selected { border: 1px solid var(--status-orange); background: #fcfcfc; }
 
         .item-close {
@@ -301,7 +306,7 @@
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
             background-color: #333; color: white; padding: 12px 20px;
             border-radius: 8px; font-size: 14px; z-index: 300;
-            animation: slideUp 0.3s ease-out;
+            animation: centerFadeIn 0.3s ease-out;
         }
 
         /* 未保存バナー */
