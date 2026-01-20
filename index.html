@@ -882,8 +882,9 @@
                 // 2025年12月（募集終了）→ メッセージ表示
                 clickAttr = `onclick="showToast('この日は募集が終了しています')" style="cursor:not-allowed;"`;
             } else if(opt.isInteractive && isJan2026 && !isOpen) {
-                // 2026年1月だが募集日でない → トースト表示
-                clickAttr = `onclick="showToast('この日は募集がありません')" style="cursor:not-allowed;"`;
+                // 2026年1月だが募集日でない → トースト表示（表示方法は変更しない）
+                // 追加: 現在表示中のシフトバー／選択状態をリセットして初期表示に戻す
+                clickAttr = `onclick="handleNonOpenClick(${day})" style="cursor:not-allowed;"`;
             } else {
                 // インタラクティブでない場合（ホーム画面など）
                 // 特別なスタイルはなし（デフォルト）
@@ -1311,6 +1312,44 @@
         // 投票画面で選択済みの requestedDates を tempSelectedDates にコピーして渡す
         tempSelectedDates = Array.isArray(requestedDates) ? [...requestedDates] : [];
         finalizeSubmission();
+    }
+
+    // 非対象（募集中でも希望中でもない）日付をタップした時の共通ハンドラ
+    function handleNonOpenClick(day) {
+        // 既存の表示（仕様）を維持してトーストを出す
+        showToast('この日は募集がありません');
+
+        // 選択中の状態をリセット
+        tempClickedDate = null;
+
+        // 一時選択データはクリア（操作をニュートラルに戻す）
+        tempSelectedDates = [];
+
+        // 投票画面のシフトバー（日時詳細表示エリア）を初期表示に戻す
+        const voteList = document.getElementById('vote-page-list');
+        if (voteList && document.getElementById('view-vote').classList.contains('active')) {
+            voteList.innerHTML = `
+                <div class="empty-state-msg">
+                    上のカレンダーの日付をタップすると<br>詳細が表示されます
+                </div>
+            `;
+            // シフトバー系インジケーターが残っていれば削除
+            const indicator = voteList.querySelector('.shift-bar-indicator'); if(indicator) indicator.remove();
+            // カレンダー表示を更新して選択ハイライトを解除
+            renderCalendar('vote');
+            return;
+        }
+
+        // モーダル（選択変更）表示中の場合も同様に初期化
+        const modalList = document.getElementById('modal-page-list');
+        if (modalList && document.getElementById('selection-modal').classList.contains('active')) {
+            modalList.innerHTML = `<div class="empty-state-msg">追加・変更する日をタップしてください</div>`;
+            const indicator = modalList.querySelector('.shift-bar-indicator'); if(indicator) indicator.remove();
+            renderCalendar('modal');
+            updateHopeCountDisplay();
+            hideUnsavedBanner();
+            return;
+        }
     }
     
     /* --- カスタム：投票画面の戻る（破棄）確認モーダル --- */
