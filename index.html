@@ -357,6 +357,10 @@
                 </div>
             </div>
 
+            <div id="vote-hope-count-display" style="text-align: center; color: #3840a0; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                現在、0件希望中
+            </div>
+
             <div style="margin-top:8px; padding-bottom:8px; display:flex; gap:8px;">
                 <button class="btn" style="background:#ddd; color:#555; flex:1; padding: 8px;" onclick="cancelVoteTab()">戻る</button>
                 <button class="btn btn-primary" style="flex:1; padding: 8px;" onclick="submitFromVoteTab()">
@@ -990,6 +994,9 @@
         
         // tempClickedDateをリセット
         tempClickedDate = null;
+
+        // 希望件数を表示
+        updateVoteHopeCountDisplay();
     }
     function onVoteCalendarClick(day) {
             tempClickedDate = day;
@@ -1045,6 +1052,7 @@
         updateVotePageDisplay(day);
         updateUserPlanArea();
         updateVoteCalendarCell(day); // カレンダーセル即時更新
+        updateVoteHopeCountDisplay(); // 希望件数更新
     }
 
     /* --- 投票画面カレンダーセル即時更新 --- */
@@ -1063,6 +1071,7 @@
             cell.classList.add('open');
             cell.innerHTML = `${day}<div class="badge">募集中</div>`;
         }
+        updateVoteHopeCountDisplay(); // 希望件数更新
     }
 
     /* --- モーダル (変更) --- */
@@ -1237,6 +1246,26 @@
                 countElement.style.fontWeight = 'normal';
             } else {
                 countElement.style.color = '#3840a0';
+                countElement.style.fontWeight = 'bold';
+                countElement.style.animation = 'pulse 0.5s ease';
+                setTimeout(() => countElement.style.animation = '', 500);
+            }
+        }
+    }
+
+    /* --- 投票画面の希望件数表示の更新 --- */
+    function updateVoteHopeCountDisplay() {
+        const countElement = document.getElementById('vote-hope-count-display');
+        if (countElement) {
+            const count = requestedDates.length;
+            countElement.textContent = `現在、${count}件希望中`;
+            
+            // 件数が0になった場合は軽く点灯、0以上の場合は強調
+            if (count === 0) {
+                countElement.style.color = '#999';
+                countElement.style.fontWeight = 'normal';
+            } else {
+                countElement.style.color = 'var(--status-orange)';
                 countElement.style.fontWeight = 'bold';
                 countElement.style.animation = 'pulse 0.5s ease';
                 setTimeout(() => countElement.style.animation = '', 500);
