@@ -378,7 +378,7 @@
             <div class="section-title">この内容で送信してよろしいですか？</div>
             <div style="margin-top:10px;">
                 <div style="background:#fff; padding:10px; border-radius:8px;">
-                    <ul id="confirm-list" style="padding-left:18px; font-size:13px; margin:0;">
+                    <ul id="confirm-list" style="padding-left:18px; font-size:16px; margin:0;">
                     </ul>
                 </div>
             </div>
@@ -917,9 +917,9 @@
             requestedDates.sort((a,b)=>a-b).forEach(d => {
                 const info = rideDetails[d];
                 if(info) {
-                    html += `<div style="text-align:left; border-bottom:1px solid #eee; padding:8px 0; color:#333; font-size:13px;">
-                                <span style="font-weight:bold;">${info.date}</span> ${info.time}
-                                <span class="type-badge" style="margin-left:5px;">${info.type}</span>
+                    html += `<div style="text-align:center; border-bottom:1px solid #eee; padding:12px 0; color:#333; font-size:16px; background-color:#f9f9f9; border-radius:6px; margin-bottom:8px;">
+                                <span style="font-weight:bold;">${info.date}</span> ⏰ ${info.time}
+                                <span class="type-badge" style="margin-left:5px; font-size:14px; padding:4px 10px;">${info.type}</span>
                              </div>`;
                 }
             });
@@ -1303,7 +1303,7 @@
         requestedDates.sort((a,b)=>a-b).forEach(d => {
             const i = rideDetails[d];
             if(i) {
-                html += `<li style="margin-bottom:8px;">${i.date} ${i.time} <br><span style="font-size:11px; color:#666;">（${i.type}）</span></li>`;
+                html += `<li style="margin-bottom:12px;">${i.date} ${i.time} <br><span style="font-size:14px; color:#666;">（${i.type}）</span></li>`;
             }
         });
         if(html === '') html = '<li>（予約なし）</li>';
