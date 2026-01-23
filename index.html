@@ -1004,11 +1004,17 @@
         updateVoteHopeCountDisplay();
     }
     function onVoteCalendarClick(day) {
-        if (openDatesJan2026.includes(day)) {
-            // 募集中なら直接希望中にする
-            if (!requestedDates.includes(day)) {
-                requestedDates.push(day);
-            }
+        if (requestedDates.includes(day)) {
+            // 希望中なら取り消し
+            requestedDates = requestedDates.filter(d => d !== day);
+            tempClickedDate = null;
+            renderCalendar('vote');
+            updateVotePageDisplay(day);
+            updateVoteHopeCountDisplay(); // 希望件数更新
+            updateUserPlanArea(); // ホームの希望表示更新
+        } else if (openDatesJan2026.includes(day)) {
+            // 募集中なら希望中にする
+            requestedDates.push(day);
             tempClickedDate = null;
             renderCalendar('vote');
             updateVotePageDisplay(day);
