@@ -1004,9 +1004,22 @@
         updateVoteHopeCountDisplay();
     }
     function onVoteCalendarClick(day) {
+        if (openDatesJan2026.includes(day)) {
+            // 募集中なら直接希望中にする
+            if (!requestedDates.includes(day)) {
+                requestedDates.push(day);
+            }
+            tempClickedDate = null;
+            renderCalendar('vote');
+            updateVotePageDisplay(day);
+            updateVoteHopeCountDisplay(); // 希望件数更新
+            updateUserPlanArea(); // ホームの希望表示更新
+        } else {
+            // それ以外は従来通り
             tempClickedDate = day;
-            renderCalendar('vote'); // カレンダーを再描画して選択中状態を表示
-        updateVotePageDisplay(day);
+            renderCalendar('vote');
+            updateVotePageDisplay(day);
+        }
     }
     
     function updateVotePageDisplay(day) {
