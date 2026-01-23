@@ -229,16 +229,6 @@
             top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: -1;
         }
         .date-cell.selected .badge { content: "選択中"; }
-        /* 本日のスタイル（表示なし） */
-        .date-cell.today {
-            font-weight: bold;
-        }
-        /* 本日のマーク（表示なし） */
-        /* .date-cell.today の視覚的な強調を削除 */
-        /* 募集がない月の今日は存在感を弱める */
-        .date-cell.today:not(.open) {
-            opacity: 0.5;
-        }
 
         /* フッター・ナビ */
         .footer-action { padding: 15px 20px 30px 20px; background: white; border-top: 1px solid #eee; z-index: 10; }
@@ -853,12 +843,6 @@
             let inner = `${day}`;
             let clickAttr = '';
             
-            // 本日判定
-            const isToday = (opt.year === TODAY_YEAR && opt.month === TODAY_MONTH && day === TODAY_DATE);
-            if (isToday) {
-                cls += ' today';
-            }
-
             // 2026年1月：募集中のデータ
             const isJan2026 = (opt.year === 2026 && opt.month === 1);
             const isDec2025 = (opt.year === 2025 && opt.month === 12);
